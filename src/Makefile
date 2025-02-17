@@ -75,6 +75,9 @@ ifndef (OS)
   ifeq ($(HOST), Windows)
     OS = mingw32
   else
+  ifeq ($(HOST), Darwin)
+    OS = darwin
+  else
   ifeq ($(HOST), AROS)
     # now we find out which CPU system aros will be used
     ifeq ($(shell uname -m), powerpc)
@@ -97,6 +100,7 @@ ifndef (OS)
     endif
   else
     OS = os4
+  endif
   endif
   endif
   endif
@@ -177,7 +181,7 @@ GCCVER    = 4
 WARN     = -W -Wall -Wwrite-strings -Wpointer-arith -Wsign-compare #-Wunreachable-code
 OPTFLAGS = -O3 -fomit-frame-pointer -fno-strict-aliasing
 DEBUG    = -DDEBUG -fno-omit-frame-pointer #-O0
-DEBUGSYM = -g -gstabs
+DEBUGSYM = -g
 CFLAGS   = -I. -I./include $(CPU) $(WARN) $(OPTFLAGS) $(DEBUG) $(DEBUGSYM)
 LDFLAGS  = $(CPU) $(DEBUGSYM)
 LDLIBS   = -L$(LIB)
@@ -201,10 +205,13 @@ ifeq ($(OS), os4)
   WARN     += -Wdeclaration-after-statement -Wdisabled-optimization -Wshadow
   REDEFINE = -DCoerceMethod=ICoerceMethod -DDoMethod=IDoMethod \
              -DDoSuperMethod=IDoSuperMethod -DDoSuperMethodA=IDoSuperMethodA
+  DEBUGSYM += -gstabs
   CFLAGS   += -mcrt=$(CRT) -D__USE_INLINE__ -D__NEW_TIMEVAL_DEFINITION_USED__ \
               $(REDEFINE) -Wa,-mregnames -DAMIGA
   LDFLAGS  += -mcrt=$(CRT)
   LDLIBS   += -lauto -lunix
+  MAPFLAGS = -Wl,--cref,-M,-Map=$@.map
+  STRIPFLAGS = --preserve-dates -R.comment -R.sdata2 -S
   CDUP     = ../
   CDTHIS   = ./
 
@@ -227,9 +234,12 @@ ifeq ($(OS), os3)
 
   # Compiler/Linker flags
   CPU     = -m68020-60 -msoft-float
+  DEBUGSYM += -gstabs
   CFLAGS  += -mcrt=clib2 -I./include/netinclude -DNO_INLINE_STDARG -D__amigaos3__ -DAMIGA
   LDFLAGS += -mcrt=clib2
   LDLIBS  += -lamiga
+  MAPFLAGS = -Wl,--cref,-M,-Map=$@.map
+  STRIPFLAGS = --preserve-dates -R.comment -R.sdata2 -S
   GCCVER  = 2
 
   SYSDEPOBJS = locale.o \
@@ -253,9 +263,12 @@ ifeq ($(OS), mos)
 
   # Compiler/Linker flags
   CPU     = -mcpu=powerpc
+  DEBUGSYM += -gstabs
   CFLAGS  += -noixemul -I./include/netinclude -DAMIGA
   LDFLAGS += -noixemul
   LDLIBS  += -lauto -lcodesets
+  MAPFLAGS = -Wl,--cref,-M,-Map=$@.map
+  STRIPFLAGS = --preserve-dates -R.comment -R.sdata2 -S
   GCCVER  = 2
 
   SYSDEPOBJS = locale.o \
@@ -278,8 +291,11 @@ ifeq ($(OS), aros-i386)
 
   # Compiler/Linker flags
   OPTFLAGS = -O3 -fomit-frame-pointer
+  DEBUGSYM += -gstabs
   CFLAGS += -Wno-pointer-sign -DNO_INLINE_STDARG -D__BSD_VISIBLE=1 -DAMIGA
   LDLIBS += -lamiga -larossupport -larosc
+  MAPFLAGS = -Wl,--cref,-M,-Map=$@.map
+  STRIPFLAGS = --preserve-dates -R.comment -R.sdata2 -S
 
   SYSDEPOBJS = locale.o \
                getft.o \
@@ -302,8 +318,11 @@ ifeq ($(OS), aros-ppc)
 
   # Compiler/Linker flags
   OPTFLAGS = -O3 -fomit-frame-pointer
+  DEBUGSYM += -gstabs
   CFLAGS += -Wno-pointer-sign -DNO_INLINE_STDARG -D__BSD_VISIBLE=1 -DAMIGA
   LDLIBS += -lamiga -larossupport -larosc
+  MAPFLAGS = -Wl,--cref,-M,-Map=$@.map
+  STRIPFLAGS = --preserve-dates -R.comment -R.sdata2 -S
 
   SYSDEPOBJS = locale.o \
                getft.o \
@@ -326,8 +345,11 @@ ifeq ($(OS), aros-x86_64)
 
   # Compiler/Linker flags
   OPTFLAGS = -O3 -fomit-frame-pointer
+  DEBUGSYM += -gstabs
   CFLAGS += -Wno-pointer-sign -DNO_INLINE_STDARG -D__BSD_VISIBLE=1 -DAMIGA
   LDLIBS += -lamiga -larossupport -larosc
+  MAPFLAGS = -Wl,--cref,-M,-Map=$@.map
+  STRIPFLAGS = --preserve-dates -R.comment -R.sdata2 -S
 
   SYSDEPOBJS = locale.o \
                getft.o \
@@ -350,8 +372,11 @@ ifeq ($(OS), aros-arm)
 
   # Compiler/Linker flags
   OPTFLAGS = -O3 -fomit-frame-pointer
+  DEBUGSYM += -gstabs
   CFLAGS += -Wno-pointer-sign -DNO_INLINE_STDARG -D__BSD_VISIBLE=1 -DAMIGA
   LDLIBS += -lamiga -larossupport -larosc
+  MAPFLAGS = -Wl,-t,--cref,-M,-Map=$@.map
+  STRIPFLAGS = --preserve-dates -R.comment -R.sdata2 -S
 
   SYSDEPOBJS = locale.o \
                getft.o \
@@ -375,9 +400,12 @@ ifeq ($(OS), mingw32)
   # Compiler/Linker flags
   EXE = .exe
   OPTFLAGS = -O3 -fomit-frame-pointer
+  DEBUGSYM += -gstabs
   CFLAGS += -I./include/mingw32
   LDFLAGS =
   LDLIBS += -liconv
+  MAPFLAGS = -Wl,--cref,-M,-Map=$@.map
+  STRIPFLAGS = --preserve-dates -R.comment -R.sdata2 -S
 
   SYSDEPOBJS = locale_other.o \
                asprintf.o \
@@ -398,11 +426,33 @@ ifeq ($(OS), unix)
 
   # Compiler/Linker flags
   OPTFLAGS = -O3 -fomit-frame-pointer
+  DEBUGSYM += -gstabs
   CFLAGS += -D_GNU_SOURCE
   LDFLAGS = 
+  MAPFLAGS = -Wl,--cref,-M,-Map=$@.map
+  STRIPFLAGS = --preserve-dates -R.comment -R.sdata2 -S
 
   SYSDEPOBJS = locale_other.o
+else
+ifeq ($(OS), darwin)
+  ##############################
+  # macOS/Darwin (darwin)
 
+  ifneq ($(HOST), Darwin)
+    CC      = clang
+    STRIP   = strip
+    OBJDUMP = objdump
+  endif
+
+  # Compiler/Linker flags
+  OPTFLAGS = -O3 -fomit-frame-pointer
+  CFLAGS += -D_GNU_SOURCE
+  LDFLAGS = -liconv 
+  MAPFLAGS = -Wl,-map,$@.map
+  STRIPFLAGS = -x
+
+  SYSDEPOBJS = locale_other.o
+endif
 endif
 endif
 endif
@@ -502,9 +552,9 @@ endif
 
 $(TARGET): $(CATFILES) $(addprefix $(OBJDIR)/,$(OBJS))
 	@echo "  LD $@.debug"
-	@$(CC) $(LDFLAGS) -o $@.debug $(addprefix $(OBJDIR)/,$(OBJS)) $(LDLIBS) -Wl,--cref,-M,-Map=$@.map
+	@$(CC) $(LDFLAGS) -o $@.debug $(addprefix $(OBJDIR)/,$(OBJS)) $(LDLIBS) $(MAPFLAGS)
 	@echo "  LD $@"
-	@$(STRIP) --preserve-dates -R.comment -R.sdata2 -S -o $@ $@.debug
+	@$(STRIP) $(STRIPFLAGS) -o $@ $@.debug
 	@$(CHMOD) $@
 
 locale.c: locale/FlexCat.pot sd/NoAutoC_c.sd
@@ -559,7 +609,7 @@ cleanall: clean
 doc:
 	$(MAKEINFO) ../doc/FlexCat_german.texinfo --amiga-39 --fill-column 76 --output ../doc/FlexCat_deutsch.guide
 	$(MAKEINFO) ../doc/FlexCat_english.texinfo --amiga-39 --fill-column 76 --output ../doc/FlexCat_english.guide
-	$(MAKEINFO) ../doc/FlexCat_spanish.texinfo --amiga-39 --fill-column 76 --output ../doc/FlexCat_español.guide
+	$(MAKEINFO) ../doc/FlexCat_spanish.texinfo --amiga-39 --fill-column 76 --output ../doc/FlexCat_espaï¿½ol.guide
 	$(MAKEINFO) ../doc/FlexCat_swedish.texinfo --amiga-39 --fill-column 76 --output ../doc/FlexCat_svenska.guide
 
 ## DEPENDENCY INCLUDE #################
